@@ -1,0 +1,175 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/7/6 19:10
+# @Author  : zx-long  
+# @File    : 项目一购物商城-深度之眼版.py
+import os
+
+commodity_list = [['Dell/戴尔游匣G5 游戏本 15.6英寸八代i5独显商务办公轻薄便携学生吃鸡', 6799],
+             ['Lenovo/联想 拯救者 Y7000P 2019款 i7游戏本学生手提笔记本电脑英特', 7999],
+             ['华硕（ASUS）飞行堡垒7 九代英特尔酷睿i7笔记本电脑游戏本华硕官方旗舰店官网', 6699],
+             ['华为P20Pro', 5000],
+             ['三星SamSung GalaxyS9', 4500],
+             ['iPhone XR', 7000],
+             ['Nikon/尼康 D750套机24-120mm f/4G ED VR全画幅专业单反相机摄影', 13000],
+             ['Canon/佳能800D EOS 蚂蚁摄影 入门级单反相机 专业 数码高清旅游', 4699]]
+shopping_cart = {}
+current_user_info = []
+
+db_file = r'user.txt'     # 文件前面加r就是不对文件中的符号进行转义
+
+while True:
+    print('''
+    1.登陆
+    2.注册
+    3.购物
+    4.充值
+    ''')
+    option  = input('请选择操作>>:').strip()
+
+# 1.登陆
+    if option == '1':
+        tag = True
+        count = 0
+        while tag:
+            if count == 3:
+                print('对不起，您已被列入黑名单，禁止登陆！')
+                break
+            user_name = input('请输入用户名>>:')
+            user_password = input('请输入密码>>:')
+
+            with open(db_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip('\n')                      # 消除换行符
+                    user_info = line.split('|')
+
+                    user_info_name = user_info[0]
+                    user_info_password = user_info[1]
+                    balance_of_db = user_info[2]         # balance_of_db是从数据库得到的数据，balance是中间变量，是我们用来执行的一个替代，防止重要数据出错
+                    balance = int(balance_of_db)
+
+                    if user_name == user_info_name and user_password == user_info_password:
+                        current_user_info = [user_info_name, balance]
+                        print(('尊敬的{}您好，您已成功登陆，您的余额为{}').format(user_info_name, balance))
+                        print('可以选择充值或者购物')
+                        tag = False                                      # tag = False 还是会继续执行剩下的for循环
+                        break                                            # break 会停止for循环
+                else:print('用户名或者密码错误！！！')                    # 在for循环完整迭代一轮后执行else，若for循环被break则不执行else
+
+# 2.注册
+    if option == '2':
+        print('欢迎您注册')
+        while True:
+            username = input('请输入用户名：').strip()
+            with open(db_file, 'r', encoding='utf-8') as file:
+                for i in file:
+                    i = i.strip('\n')
+                    registered_user = i.split('|')
+                    if username == registered_user[0]:
+                        print('该用户名已被注册')
+                        break                # 跳出for循环
+                else:
+                    break                    # 跳出while循环
+
+        while True:
+            password1 = input('请设置密码').strip()
+            password2 = input('请再次输入密码').strip()
+            if password1 == password2:
+                print('注册成功')
+                break
+            else:
+                print('两次输入密码不一致，请重新输入！！！')
+        with open('user.txt', 'a', encoding='utf-8') as g:
+            g.write('\n%s|%s|0'%(username, password1))
+            g.flush()                                    # 立即刷新到硬盘
+
+# 3.购物
+    if option == '3':
+        if not current_user_info:
+            print('请先登录。。。')
+        else:
+            print('祝您购物愉快！！！\n')
+
+            tag = True
+            while tag:
+                for k,product in enumerate(commodity_list, 1):
+                    print(k, product)
+                option3 = input('输入商品编号以购买，按q退出>>:')
+                if option3.isdigit():
+                    option3 = int(option3)
+                    if option3 < 0 or option3 > len(commodity_list):continue
+
+                    commodity_name = commodity_list[option3-1][0]
+                    commodity_price = commodity_list[option3-1][1]
+
+                    if balance > commodity_price:
+                        if commodity_name in shopping_cart:
+                            shopping_cart[commodity_name]['数量'] += 1
+                        else:
+                            shopping_cart[commodity_name]={'单价':commodity_price, '数量': 1}
+
+                        balance -= commodity_price
+                        current_user_info[1]= balance               # 在列表中更新余额
+                        print('您的购物车里有%s'% shopping_cart)
+
+                    else:
+                        print('您的余额不足以购买这件商品。。')
+
+                elif option3 == 'q':
+                    total_cost = 0
+                    for i, key in enumerate(shopping_cart, 1):
+                        print('%20s%18s%18s%18s%18s'%(
+                            i,
+                            key,
+                            shopping_cart[key]['数量'],
+                            shopping_cart[key]['单价'],
+                            shopping_cart[key]['单价']*shopping_cart[key]['数量']
+                        ))
+                        total_cost += shopping_cart[key]['单价']*shopping_cart[key]['数量']
+                    print('''
+                    您的总消费为：%s
+                    '''%total_cost)
+                    while tag:
+                        inp = input('确认购买（yes/no?)').strip()
+                        if inp not in ['Y', 'y', 'N', 'n','yes', 'no']:continue
+                        if inp in ['Y', 'y', 'yes']:
+                            src_file = db_file
+                            dst_file = r'%s.swap'% db_file           # 文件修改
+                            with open(src_file,'r',encoding='utf-8') as read_file, open(dst_file,'w',encoding='utf-8') as write_file:
+                                for line in read_file:
+                                    if line.startswith(user_info_name):
+                                        user_info_line_list = line.strip('\n').split('|')
+                                        balance_of_db = str(balance)
+                                        user_info_line_list[-1] = balance_of_db
+                                        line = '|'.join(user_info_line_list)+'\n'
+
+                                    write_file.write(line)
+                            os.remove(src_file)
+                            os.rename(dst_file, src_file)
+                            print('购买成功！')
+
+                        shopping_cart = {}    # 如果没有选择yes,则直接跳到这一步清空购物车，但是最后总是会执行这一步
+                        current_user_info = []
+                        print(shopping_cart)
+                        tag = False
+ # 4.充值
+    if option == '4':
+        if not current_user_info:
+            print('请先登陆。。')
+        else:
+            add_balance = input('请输入充值金额>>:')
+
+            src_file = db_file
+            dst_file = r'%s.swap' % db_file  # 文件修改
+            with open(src_file, 'r', encoding='utf-8') as read_file, open(dst_file, 'w',encoding='utf-8') as write_file:
+                for line in read_file:
+                    user_info_line_list = line.strip('\n').split('|')
+                    if user_info_line_list[0] == current_user_info[0]:
+                        balance_of_db = str(balance+int(add_balance))
+                        user_info_line_list[-1] = balance_of_db
+                        line = '|'.join(user_info_line_list) + '\n'
+
+                    write_file.write(line)
+            os.remove(src_file)
+            os.rename(dst_file, src_file)
+            print('充值成功！您的余额为%s'%balance_of_db)
