@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/7/8 17:15
+# @Author  : zx-long  
+# @File    : 函数练习
+
+# 修改文件内容的函数
+import os
+def doc_modify(doc_name,old,new):
+    src_file = doc_name
+    dst_file = r'%s.swap' % doc_name
+    with open(src_file,'r',encoding='utf-8') as f,open(dst_file,'w',encoding='utf-8') as g:
+            for line in f:
+                if old in line:
+                    line = line.replace(old, new)
+
+                g.write(line)
+    os.remove(src_file)
+    os.rename(dst_file,src_file )
+
+doc_modify('f.txt','。','；')
+
+# 计算传入字符串的数字、字母、空格以及其他类型的个数
+def num_of_NumberLetterBlankElse (str):
+    count1 = 0
+    count2 = 0
+    count3 = 0
+    count4 =0
+    for i in str:
+        if i.isdigit():
+            count1 += 1
+        elif i.isalpha():
+            count2 += 1
+        elif i.isspace():
+            count3 += 1
+        else:
+            count4 += 1
+    print('数字,字母,空格,其他')
+    return count1,count2,count3,count4
+
+print(num_of_NumberLetterBlankElse('aa1f 56a1 fa6 $'))
+
+# 判断用户传入的对象长度是否大于5
+def measure_length(object):
+    if len(object) > 5:
+        return True
+    else:
+        return False
+
+print(measure_length('asfa61as1d'))
+print(measure_length(['a','abc',1,2,3]))
+print(measure_length((1,2,3,4)))
+
+# 检查传入列表的长度，如果大于2，仅保留两个长度的内容，并将新内容返回给调用者
+def check_list(list):
+    return list[:2]
+
+print(check_list([1,2,3,8]))
+print(check_list('aaeavae'))
+
+# 检查列表或元组奇数位索引对应的元素，返回给调用者
+def odd_digits(obj):
+    obj_odd = []
+    for i in range(len(obj)):
+        if not i%2 == 0:
+            obj_odd.append(obj[i])
+    return obj_odd
+
+print(odd_digits([1,26,'d',2,6,'t']))
+print(odd_digits((1,26,'d',2,6,'t')))
+
+# 检查字典中的每一个value的长度，若大于2，若大于2，仅保留两位长度的内容，将内容返回给调用者
+def check_value_of_dic (dic):
+    for key in dic:
+        dic[key] = check_list(dic[key])
+    return dic
+
+dic = {'k1':'v1v1','k2':[11,22,33,44]}
+print(check_value_of_dic(dic))
