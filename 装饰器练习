@@ -1,0 +1,172 @@
+"""
+编写装饰器，为多个函数加上认证的功能（用户的账号密码来源于文件）。
+要求：登录成功一次，后续的函数都无需再输入用户名和密码；
+内置函数eval 的用法
+1、简单表达式
+print(eval('1+2'))
+输出结果：3
+2、字符串转字典
+print(eval("{'name':'linux','age':18}")
+输出结果：{'name':'linux','age':18}
+3、传递全局变量
+print(eval("{'name':'linux','age':age}",{"age":1822}))
+输出结果：{'name': 'linux', 'age': 1822}
+4、传递本地变量
+age=18
+print(eval("{'name':'linux','age':age}",{"age":1822},locals()))
+输出结果：{'name': 'linux', 'age': 18}
+"""
+import time
+
+current_user = {
+    'username': None,
+}
+
+
+def auth(engine):
+    def user_auth(func):
+        def wrapper(*args, **kwargs):
+            if engine == 'file':
+                print('基于文件的认证')
+                if current_user['username']:
+                    print('已经登陆过了')
+                    res = func(*args, **kwargs)
+                    return res
+
+                name = input('用户名>>: ').strip()
+                pwd = input('密码>>: ').strip()
+                with open('account','r',encoding='utf-8') as f:
+                    for line in f:
+                        user_dic = line.strip('\n')
+                        user_dic = eval(user_dic)
+                        if name == user_dic['name'] and pwd == user_dic['password']:
+                            print('登陆成功')
+                            current_user['username'] = name
+                            res = func(*args, **kwargs)
+                            return res
+                    else:
+                        print('用户名或密码错误')
+        return wrapper
+
+    return user_auth
+
+
+@auth('file')  # auth装饰器本身是一个函数，在语法糖中也可以传参数
+def index():
+    time.sleep(1)
+    print('welcome to index page')
+    return 1
+
+@auth('file')
+def home():
+    print('welcome to home page')
+
+
+index()
+home()
+
+
+
+
+'''
+编写装饰器，为多个函数加上认证功能，要求登录成功一次，
+在超时时间内无需重复登录，超过了超时时间，则必须重新登录
+'''
+import time
+
+current_user = {
+    'username': None,
+    'login_time':None,
+    'timeout':10
+}
+
+
+def auth(engine):
+    def user_auth(func):
+        def wrapper(*args, **kwargs):
+            if engine == 'file':
+                print('基于文件的认证')
+                if current_user['username']:
+                    time_out = time.time() - current_user['login_time']   # 计算在线时间
+                    print('已经登陆过了')
+                    if time_out < current_user['timeout']:
+                        res = func(*args, **kwargs)
+                        return res
+                    else:
+                        print('登陆超时')
+
+                name = input('用户名>>: ').strip()
+                pwd = input('密码>>: ').strip()
+                with open('account','r',encoding='utf-8') as f:
+                    for line in f:
+                        user_dic = line.strip('\n')
+                        user_dic = eval(user_dic)
+                        if name == user_dic['name'] and pwd == user_dic['password']:
+                            print('登陆成功')
+                            current_user['username'] = name
+                            current_user['login_time'] = time.time()           # 记录登录时间
+                            res = func(*args, **kwargs)
+                            return res
+                    else:
+                        print('用户名或密码错误')
+        return wrapper
+
+    return user_auth
+
+
+@auth('file')  # auth装饰器本身是一个函数，在语法糖中也可以传参数
+def index():
+    time.sleep(10)
+    print('welcome to index page')
+    return 1
+
+@auth('file')
+def home():
+    print('welcome to home page')
+
+
+index()
+home()
+
+
+
+
+'''
+编写日志装饰器，实现功能：一旦某函数执行，
+则将函数执行时间写入到日志文件中，日志文件路径可以指定
+'''
+import time
+
+import time,os
+def timer(logfile):   # 有参装饰器
+    def deco(func):
+        if not os.path.exists(logfile):          # 如果文件不存在，则新建文件
+            with open(logfile,'w',encoding = 'utf-8') as f:
+                pass                                               # pass用来占位，因为不写内容，程序会报错
+        def wrapper(*args,**kwargs):
+            with open(logfile,'a',encoding = 'utf-8') as f:
+                time1 = time.strftime('%Y-%m-%d %H:%M:%S')
+                start_time = time.time()
+                f.write('%s %s 运行\n'%(time1,func.__name__))
+                res = func(*args, **kwargs)
+                time2 = time.strftime('%Y-%m-%d %H:%M:%S')
+                end_time = time.time()
+                interval = end_time - start_time
+                f.write('%s %s 停止； 间隔:%s\n' % (time.strftime('%Y-%m-%d %X'), func.__name__,interval))
+        return wrapper
+    return deco
+
+@timer('装饰器测试记录运行时间.txt')           # 语法糖要加文件参数
+def index():
+    time.sleep(1)
+    print('welcome to index page')
+    return 1
+
+@timer('装饰器测试记录运行时间.txt')
+def home():
+    time.sleep(2)
+    print('welcome to home page')
+
+
+index()
+home()
