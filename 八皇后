@@ -4,32 +4,32 @@ state是元组或列表用来储存皇后的位置信息
 比如state[0] = 3,表示第一行的皇后在第三列
 nextX和nextY是当前要考虑的皇后的列位置和行位置
 逐行迭代
+每一种解由元组表示，queens迭代器里面共有92组元组
 '''
-def conflict(state, nextX):
+def conflict(state, nextX):     # 传入之前皇后位置的元组和当前要放的皇后的横坐标
     nextY = len(state)
     for i in range(nextY):
-        if abs(state[i] - nextX) in (0, nextY - i):   # 同对角线横纵坐标之和相等
+        if abs(state[i] - nextX) in (0, nextY - i):   # 0意味着在同一列，如果横坐标的差的绝对值等于纵坐标的差，意味着在对角线
             return True
     return False
 
 
-def queens(num=8, state=()):
+def queens(num, state=()):   # 对于queens函数来说，每求出一个解是一次迭代
     for pos in range(num):     # 在当前行的所有位置中迭代0-7
         if not conflict(state, pos):      # 如果某一位置和之前皇后位置都不冲突，这里再分两种情况
             if len(state) == num - 1:         # 如果是最后一行，直接输出位置
                 yield (pos,)
             else:
-                for result in queens(num, state + (pos,)):  # 如果不是最后一行当前位置加到之前的元组里，（pos,）表示只有一个元素的元组
+                for result in queens(num, state + (pos,)):  # 递归调用queens,state += (pos,）,(pos,）表示只有一个元素的元组
                     yield (pos,) + result
 
 
 def prettyprint(solution):
     def line(pos, length=len(solution)):
-        return '. ' * pos + '* ' + '. ' * (length - pos - 1)
+        return '。' * pos + '* ' + '。' * (length - pos - 1)
 
     for pos in solution:
         print(line(pos))
-
 
 import random
 prettyprint(random.choice(list(queens(8))))
