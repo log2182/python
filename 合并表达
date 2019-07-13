@@ -1,0 +1,30 @@
+# 三元表达式子
+x=17
+y=16
+res = x if x>y else y
+print(res)
+
+# 列表生成式
+l = ['egg%s'% i for i in range(10)]
+print(l)
+l1 = ['egg%s'% i for i in range(10) if i>5]
+print(l1)
+
+# 生成器表达式
+
+l = ('egg%s'% i for i in range(10))
+print(next(l))
+print(next(l))
+print(list(l))   # list 将迭代器转化为列表
+
+# 递归,打印1-10
+items = [1, [2, [3, [4, [5, [6, [7, [8, [9, [10, ]]]]]]]]]]
+
+def tell(items):
+    for item in items:
+        if type(item) is not list:
+            print(item)
+        else:
+            tell(item)
+
+tell(items)
