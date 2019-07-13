@@ -28,3 +28,72 @@ def tell(items):
             tell(item)
 
 tell(items)
+
+#  递归，二分法
+l=[1,2,10,30,33,99,101,200,301,402,]
+def search(num,l,start = 0,stop = len(l)-1):
+    if start <= stop:
+        mid = start + (stop - start)//2
+        print('start:%s,stop:%s,mid:%s,mid_value:%s'%(start,stop,mid,l[mid]))
+        if num > l[mid]:
+            start = mid
+        elif num < mid:
+            stop = mid
+        else:
+            print("find the position ,it's [%s]"%mid)
+            return mid
+        search(num,l,start,stop)
+    else:
+        print('such a number do not exist')
+        return
+
+search(301,l)
+
+#  将name中的字母都变成大写
+names=['albert','james','kobe','kd']
+names=[name.upper() for name in names]  # str.upper()字母转换为大写的方法，返回转换后的字符串
+print(names)
+
+#1 将names=['albert','jr_shenjing','kobe','kd']中以shenjing结尾的名字过滤掉，然后保存剩下的名字长度
+names = ['albert','jr_shenjing','kobe','kd']
+res = filter(lambda name:not name.endswith('shenjing'),names)   # 保留的是过滤出的名字，所以加not
+print(list(res))
+
+#2 用列表生成式完成上题
+ames=['albert','jr_shenjing','kobe','kd']
+names=[name for name in names if not name.endswith('shenjing')]
+print(names)
+
+# 求文件a.txt中最长的行的长度（长度按字符个数算，需要使用max函数）
+with open('a.txt', 'r', encoding='utf-8') as f:
+    res = max(f,key = lambda line:len(line))   # max 两个参数，第一个是迭代对象，二是key=比较指标
+    print(res, len(res))
+
+# 求求文件a.txt中总共包含的字符个数？思考为何在第一次之后的n次sum求和得到的结果为0？（需要使用sum函数）
+with open('a.txt', 'r', encoding='utf-8')as f:
+    print(sum(len(lines) for lines in f))
+
+'''
+文件shopping.txt内容如下，分别代表商品，价格和数量
+mac,20000,3
+lenovo,3000,10
+bmw,1000000,10
+chicken,200,1
+（1）求总共花了多少钱？
+（2）打印出所有商品的信息，格式为[{'name':'xxx','price':333,'count':3},...]
+（3）求单价大于10000的商品信息,格式同上
+'''
+with open('shopping.txt', 'r', encoding='utf-8') as f:
+    res = [line.strip('\n').split(',') for line in f]       # 用中括号，res是列表
+    total = sum(int(res[i][1])*int(res[i][2]) for i in range(len(res)))
+    print(total)
+    info_product = [{'name':res[i][0],'price':res[i][1],'count':res[i][2]} for i in range(len(res))]
+    print(info_product)
+    a = [item['name'] for item in info_product if int(item['price'])>10000]
+    print(a)
+
+# # 思考题
+with open('a.txt') as f:
+    g=(len(line) for line in f)
+print(sum(g))
+# 为何报错——注意g是用圆括号生成的，是一个生成器，只有在调用时才会返回值，不能用作求和函数的参数，换成中括号也就是列表生成式则可以求解
