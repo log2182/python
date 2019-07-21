@@ -1,0 +1,440 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/7/18 23:27
+# @Author  : zx-long  
+# @File    : start.py
+from emall.core import src
+from emall.lib import common
+from emall.conf import setting
+import logging
+import time
+
+def start():
+    start_menu = {'登陆': ['购物', '还款','提现','查询额度','查询余额','修改密码'], '注册': None,'修改密码':None,'修改额度':None}
+    while True:
+        current_layer = start_menu
+        for i,key in enumerate(current_layer,1):
+            print(i,key)
+        option  = input('请选择操作>>:').strip()
+        if option == '1':
+            tag = src.login()
+            while tag:
+                current_layer = start_menu['登陆']
+                for i,key in enumerate(current_layer,1):
+                    print(i, key)
+                choice = input('请选择操作>>:').strip()
+                if choice == '1':
+                    src.shopping()
+                elif choice == '2':
+                    src.repayment()
+                elif choice == '3':
+                    src.cash_out()
+                elif choice == '4':
+                    print('您的总额度为：￥%s'%common.get_amount())
+                elif choice == '5':
+                    print('您的余额为：￥%s'%common.get_balance())
+                elif choice in ['q','Q','quit']:
+                    logger = logging.getLogger('用户退出')
+                    fh = logging.FileHandler(filename=r'C:\Users\Log\PycharmProjects\untitled\emall\log\access.log',encoding='utf-8')
+                    formatter = logging.Formatter(
+                        fmt='%(asctime)s - %(name)s - %(levelname)s -%(module)s:  %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S %p',)
+                    fh.setFormatter(formatter)
+                    logger.addHandler(fh)
+                    logger.setLevel(20)
+                    Time_formate = '%Y-%m-%d  %X'
+                    start_time = time.strftime(Time_formate, time.localtime())
+                    logger.info(start_time + ' 用户 ' + src.current_user_info[0] + '退出')
+                    tag = False
+                else:
+                    print('输入有误')
+        elif option == '2':
+            src.register()
+        elif option == '3':
+            setting.change_psd()
+        elif option == '4':
+            setting.change_amount()
+        elif option == 'q':
+            print('欢迎再次光临')
+            break
+        else:
+            print('输入有误')
+
+
+start()
+
+# @File    : setting.py
+
+db_file = r'C:\Users\Log\PycharmProjects\untitled\emall\db\db.json'
+black_file = r'C:\Users\Log\PycharmProjects\untitled\emall\db\blackList.json'
+
+from emall.lib import common
+import json
+# 1.增加额度
+def change_amount():
+    tag = True
+    while tag:
+        name = input('输入用户名')
+        if not common.is_black_list(name):
+            with open(db_file, 'r', encoding='utf-8') as f:
+                registered_users = json.load(f)
+                for item in registered_users:
+                    if item['name'] == name:
+                        while tag:
+                            new_amount = input('将额度增加为>>:')
+                            new_amount = int(new_amount)
+                            if new_amount > item['amount']:
+                                while tag:
+                                    option = input('确定修改？>>:y/n')
+                                    if option == 'y':
+                                        item['balance'] += new_amount - item['amount']
+                                        item['amount'] = new_amount
+                                        with open(db_file, 'w', encoding='utf-8') as f:
+                                            json.dump(registered_users,f)
+                                        print('操作成功')
+                                        tag = False
+                                    elif option == 'n':
+                                        print('操作取消')
+                                        tag = False
+                                    else:
+                                        print('输入错误')
+                                        continue
+                                    return
+                            else:
+                                print('额度必须大于现有额度')
+                                continue
+                else:
+                   print('用户名不存在')
+                   continue
+        else:
+            print('该用户是黑名单用户，不能提额')
+
+# 2.修改密码
+def change_psd():
+    while True:
+        name = input('请输入用户名:')
+        with open(db_file, 'r', encoding='utf-8') as f:
+            registered_users = json.load(f)
+            for item in registered_users:
+                if name == item['name']:
+                    while True:
+                        psd = input('输入旧密码：')
+                        if psd == item['psd']:
+                            new_psd1 = input('输入新密码')
+                            new_psd2 = input('请再次输入新密码')
+                            if new_psd1 == new_psd2:
+                                item['psd'] = new_psd1
+                                with open(db_file, 'w', encoding='utf-8') as f:
+                                    json.dump(registered_users,f)
+                                print('密码修改成功')
+                                return
+                            else:
+                                print('两次密码输入不一致！')
+                        else:
+                            print('密码错误')
+            else:
+                print('用户名不存在')
+                
+
+# @File    : src.py
+
+commodity_list = [['Dell/戴尔游匣G5 游戏本 15.6英寸八代i5独显商务办公轻薄便携学生吃鸡', 6799],
+             ['Lenovo/联想 拯救者 Y7000P 2019款 i7游戏本学生手提笔记本电脑英特', 7999],
+             ['华硕（ASUS）飞行堡垒7 九代英特尔酷睿i7笔记本电脑游戏本华硕官方旗舰店官网', 6699],
+             ['华为P20Pro', 5000],
+             ['三星SamSung GalaxyS9', 4500],
+             ['iPhone XR', 7000],
+             ['Nikon/尼康 D750套机24-120mm f/4G ED VR全画幅专业单反相机摄影', 13000],
+             ['Canon/佳能800D EOS 蚂蚁摄影 入门级单反相机 专业 数码高清旅游', 4699]]
+
+current_user_info = []
+db_file = r'C:\Users\Log\PycharmProjects\untitled\emall\db\db.json'
+log_file = r'C:\Users\Log\PycharmProjects\untitled\emall\log\access.log'
+black_file = r'C:\Users\Log\PycharmProjects\untitled\emall\db\blackList.json'
+
+from functools import wraps
+from emall.lib import common
+import time
+import logging
+# 业务日志装饰器
+def decorator(func):
+    @wraps(func)
+    def log(*args,**kwargs):
+        global current_user_info
+        user_name = current_user_info[0]
+        keywords = func(*args, **kwargs)
+        Time_formate = '%Y-%m-%d  %X'
+        start_time = time.strftime(Time_formate, time.localtime())
+        logger = logging.getLogger(func.__name__)
+        fh = logging.FileHandler(filename=log_file, encoding='utf-8')
+        sh = logging.StreamHandler()
+        formatter = logging.Formatter(
+            fmt='%(asctime)s - %(name)s - %(levelname)s -%(module)s:  %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S %p',
+        )
+        fh.setFormatter(formatter)
+        sh.setFormatter(formatter)
+        logger.addHandler(fh)
+        logger.addHandler(sh)
+        logger.setLevel(20)
+        logger.info(start_time + ' 用户 ' + user_name + ' 发起 ' + func.__name__ + ' 业务，金额为： %s \n' % keywords)
+        return keywords
+    return log
+
+
+import json
+# 1.登陆
+def login():
+    count = 0
+    while True:
+        if count == 3:
+            print('对不起，您已尝试三次，禁止登陆！')
+            return False
+        user_name = input('请输入用户名>>:')
+        user_password = input('请输入密码>>:')
+        if not common.is_black_list(user_name):
+            with open(db_file, 'r', encoding='utf-8') as f:
+                registered_users = json.load(f)
+                for item in registered_users:
+                    user_info_name = item['name']
+                    user_info_password = item['psd']
+                    balance_of_db = item['balance']         # balance_of_db是从数据库得到的数据，balance是中间变量，是我们用来执行的一个替代，防止重要数据出错
+                    balance = float(balance_of_db)
+                    amount_of_db = item['amount']
+                    amount = float(amount_of_db)
+
+                    if user_name == user_info_name and user_password == user_info_password:
+                        global current_user_info
+                        current_user_info = [user_info_name, balance,amount]
+                        Time_formate = '%Y-%m-%d  %X'
+                        start_time = time.strftime(Time_formate, time.localtime())
+                        logger = logging.getLogger('登陆')
+                        fh = logging.FileHandler(filename=log_file, encoding='utf-8')
+                        formatter = logging.Formatter(
+                            fmt='%(asctime)s - %(name)s - %(levelname)s -%(module)s:  %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S %p',
+                        )
+                        fh.setFormatter(formatter)
+                        logger.addHandler(fh)
+                        logger.setLevel(20)
+                        logger.info(start_time + ' 用户 ' + user_name + '登陆')
+                        print(('尊敬的{}您好，您已成功登陆，您可用余额为{}').format(user_info_name, balance))
+                        black_list = []
+                        return True
+                else:
+                    count+=1
+                    with open(black_file, 'r', encoding='utf-8') as f:
+                        black_list = json.load(f)
+                    black_list.append(user_name)
+                    with open(black_file, 'w', encoding='utf-8') as g:
+                        json.dump(black_list,g)
+                    print('用户名或者密码错误！！！')                    # 在for循环完整迭代一轮后执行else，若for循环被break则不执行else
+        else:
+            print('黑名单用户禁止登陆！')
+
+# 2.注册
+def register():
+    user_dict = {'name':None,'psd':None,'balance':200000,'amount':200000}
+    while True:
+        username = input('请输入用户名：').strip()
+        with open(db_file, 'rt', encoding='utf-8') as file:
+            registered_user = json.load(file)
+            for item in registered_user:
+                if username == item['name']:
+                    print('该用户名已被注册')
+                    break                # 跳出for循环
+            else:
+                break                    # 跳出while循环
+    user_dict['name'] = username
+    while True:
+        password1 = input('请设置密码').strip()
+        password2 = input('请再次输入密码').strip()
+        if password1 == password2:
+            Time_formate = '%Y-%m-%d  %X'
+            start_time = time.strftime(Time_formate, time.localtime())
+            logger = logging.getLogger('登陆')
+            fh = logging.FileHandler(filename=log_file, encoding='utf-8')
+            formatter = logging.Formatter(
+                fmt='%(asctime)s - %(name)s - %(levelname)s -%(module)s:  %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S %p',
+            )
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+            logger.setLevel(20)
+            logger.info(start_time + '新注册'+'用户' + username)
+            print('注册成功')
+            break
+        else:
+            print('两次输入密码不一致，请重新输入！！！')
+    user_dict['psd'] = password1
+    registered_user.append(user_dict)
+    with open(db_file, 'wt', encoding='utf-8') as g:
+        json.dump(registered_user,g)
+        g.flush()                  # 立即刷新到硬盘
+
+@decorator
+# 3.购物
+def shopping():
+    shopping_cart = {}
+    global current_user_info
+    if not current_user_info:
+        print('请先登录。。。')
+    else:
+        balance = current_user_info[1]
+        balance_backup = current_user_info[1]   # 备份，用户取消购买时能够还原数据
+        print('祝您购物愉快！！！\n')
+
+        tag = True
+        while tag:
+            for k,product in enumerate(commodity_list, 1):
+                print(k, product)
+            option3 = input('输入商品编号以购买，按q退出>>:')
+            if option3.isdigit():
+                option3 = int(option3)
+                if option3 < 0 or option3 > len(commodity_list):continue
+
+                commodity_name = commodity_list[option3-1][0]
+                commodity_price = commodity_list[option3-1][1]
+
+                if balance > commodity_price:
+                    if commodity_name in shopping_cart:
+                        shopping_cart[commodity_name]['数量'] += 1
+                    else:
+                        shopping_cart[commodity_name]={'单价':commodity_price, '数量': 1}
+
+                    balance -= commodity_price
+                    current_user_info[1]= balance               # 在列表中更新余额
+                    print('您的购物车里有%s'% shopping_cart)
+
+                else:
+                    print('\033[31;1m您的余额不足以购买这件商品。。\033[1m')
+
+            elif option3 == 'q':
+                total_cost = 0
+                for i, key in enumerate(shopping_cart, 1):
+                    print('%20s%18s%18s%18s%18s'%(
+                        i,
+                        key,
+                        shopping_cart[key]['数量'],
+                        shopping_cart[key]['单价'],
+                        shopping_cart[key]['单价']*shopping_cart[key]['数量']
+                    ))
+                    total_cost += shopping_cart[key]['单价']*shopping_cart[key]['数量']
+                print('''
+                您的总消费为：%s
+                '''%total_cost)
+                while tag:
+                    inp = input('确认购买（yes/no?)').strip()
+                    if inp not in ['Y', 'y', 'N', 'n','yes', 'no']:continue
+                    if inp in ['Y', 'y', 'yes']:
+                        with open(db_file,'r+',encoding='utf-8') as f:
+                            user_info_list = json.load(f)
+                            for item in user_info_list:
+                                if current_user_info[0] == item['name']:
+                                    balance_of_db = balance
+                                    item['balance'] = balance_of_db
+                        with open(db_file,'w',encoding='utf-8') as w:
+                            json.dump(user_info_list,w)
+                        print('购买成功！')
+                        print('您的余额为%s'%balance)
+                        return total_cost
+                    else:
+                        print('购买未成功')
+                        current_user_info[1] = balance_backup
+                    shopping_cart = {}    # 如果没有选择yes,则直接跳到这一步清空购物车，但是最后总是会执行这一步
+                    tag = False
+
+@decorator
+# 4.还款
+def repayment():
+    global current_user_info
+    if not current_user_info:
+        print('请先登陆。。')
+    else:
+        if current_user_info[2]-current_user_info[1] == 0:
+            print('不需要还款')
+        else:
+            while True:
+                print('您共需还款￥%s'%(current_user_info[2]-current_user_info[1]))
+                add_balance = input('请输入还款金额>>:')
+                add_balance = float(add_balance)
+                if add_balance > (current_user_info[2]-current_user_info[1]):
+                    print('不需要还这么多哦')
+                elif add_balance <(current_user_info[2]-current_user_info[1]) and add_balance > 0:
+                    with open(db_file, 'r', encoding='utf-8') as f:
+                        user_list = json.load(f)
+                        for item in user_list:
+                            if item['name'] == current_user_info[0]:
+                                current_user_info[1] += add_balance
+                                item['balance'] = current_user_info[1]
+                    with  open(db_file, 'w', encoding='utf-8') as g:
+                        json.dump(user_list,g)
+                    print('还款成功！您的可用余额为%s'%current_user_info[1])
+                    return add_balance
+                else:
+                    print('输入错误')
+
+@decorator
+# 5.提现
+def cash_out():
+    global current_user_info
+    if not current_user_info:
+        print('请先登陆。。')
+    else:
+        while True:
+            out_money = input('欲提款金额为>>:')
+            out_money = float(out_money)
+            if float(current_user_info[1]) > out_money and out_money > 0:
+                with open(db_file, 'r', encoding='utf-8') as f:
+                    user_list = json.load(f)
+                    for item in user_list:
+                        if item['name'] == current_user_info[0]:
+                            current_user_info[1] -= out_money
+                            item['balance'] = current_user_info[1]
+                with  open(db_file, 'w', encoding='utf-8') as g:
+                    json.dump(user_list, g)
+                print('您已成功提款￥%s！您剩下的可用额度为￥%s' % (out_money,current_user_info[1]))
+                return out_money
+            elif out_money < 0:
+                print('输入错误')
+            else:
+                print('您的额度不够')
+                
+# @File    : common.py
+from emall.core import src
+import json
+db_file = r'C:\Users\Log\PycharmProjects\untitled\emall\db\db.json'
+black_file = r'C:\Users\Log\PycharmProjects\untitled\emall\db\blackList.json'
+
+# 查询余额
+def get_balance():
+    if src.current_user_info[0]:
+        with open(db_file,'r',encoding='utf-8') as f:
+            user_list = json.load(f)
+            for item in user_list:
+                if item['name'] == src.current_user_info[0]:
+                    return item['balance']
+    print('请先登陆')
+    src.login()
+
+# 查询总额度
+def get_amount():
+    if src.current_user_info[0]:
+        with open(db_file,'r',encoding='utf-8') as f:
+            user_list = json.load(f)
+            for item in user_list:
+                if item['name'] == src.current_user_info[0]:
+                    return item['amount']
+    print('请先登陆')
+    src.login()
+
+
+# 判断是否黑名单用户
+def is_black_list(name):
+    with open(black_file, 'r', encoding='utf-8') as f:
+        black_list = json.load(f)
+        for i in range(len(black_list) - 2):
+            if name == black_list[i] \
+                    and black_list[i + 1] == black_list[i] \
+                    and black_list[i + 2] == black_list[i]:  # 黑名单中出现连续三次的姓名禁止登陆
+                return True
