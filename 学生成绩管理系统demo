@@ -1,0 +1,225 @@
+# start.py
+from core import src
+
+if __name__ == '__main__':
+    src.run()
+
+
+# class.py
+class StudentGrade:
+    school = 'deeplearning'
+    # 对象初始化
+    def __init__(self,name,grade,math,chinese,english,physics):
+        self.Name =name
+        self.Grade = grade
+        self.Math = math
+        self.English = english
+        self.Physics = physics
+        self.Chinese = chinese
+    
+    # 单科查询
+    def single_subject_check(self,sub):
+        dic = {
+            '1': self.Math,
+            '2': self.Chinese,
+            '3': self.English,
+            '4': self.Physics
+        }
+        sub_name = ['数学', '语文', '英语', '物理']
+        return dic[sub],'%s--%s成绩:%s'%(self.Name,sub_name[int(sub)-1],dic[sub])
+
+    # 打印所有科目
+    def o_all_subject(self):
+        print('''
+                姓名：%s
+                级段：%s
+                数学成绩:%s
+                语文成绩:%s
+                英文成绩:%s
+                物理成绩:%s
+                ''' % (self.Name, self.Grade,self.Math,self.Chinese,self.English,self.Physics))
+
+
+# core.src.py
+from db import db_handler
+
+manager = {'key':None}
+# 查询某学生所有学科
+def o_all_subject():
+    name = input('输入姓名以查询：')
+    
+    stu = db_handler.load(name)
+    if stu:
+        stu.o_all_subject()
+    else:
+        print('不存在该学生')
+
+# 查询某学生的某一学科
+def o_single_subject():
+    name = input('输入姓名以查询：')
+    stu = db_handler.load(name)
+    if stu:
+        while True:
+            print('''
+               1.数学
+               2.语文
+               3.英语
+               4.物理
+            ''')
+            sub = input('查询科目>>:')
+            if sub in ['1','2','3','4']:
+                flg,msg = stu.single_subject_check(sub)
+                if flg:
+                    print(msg)
+            elif sub == 'q':
+                break
+            else:
+                print('没有该科目')
+    else:
+        print('不存在该学生')   
+
+# 查询某学科所有学生的成绩
+def A_single_subject():
+    while True:
+        print('''
+           1.数学
+           2.语文
+           3.英语
+           4.物理
+        ''')
+        sub = input('输入学科以查询：').strip()
+        if sub == 'q':
+            break
+        elif sub in ['1','2','3','4']:
+            list = db_handler.name_menu()
+            for name in list:
+                stu = db_handler.load(name)
+                flg,msg = stu.single_subject_check(sub)
+                if flg:
+                    print(msg)
+        else:
+            print('没有该科目')
+ 
+def ave_of_subject():
+    while True:
+        print('''
+           1.数学
+           2.语文
+           3.英语
+           4.物理
+        ''')
+        sub = input('输入学科以查询：').strip()
+        sub_name = ['数学','语文','英语','物理']
+        if sub == 'q':
+            break
+        elif sub in ['1','2','3','4']:
+            total = 0
+            list = db_handler.name_menu()
+            n = len(list)
+            for name in list:
+                stu = db_handler.load(name)
+                flg,msg = stu.single_subject_check(sub)
+                total += flg
+            ave = total/n
+            print('%s平均分为：%s'%(sub_name[int(sub)-1],ave))
+        else:
+            print('没有该科目')
+            
+def add_student():
+    print('=======添加学生信息=======')
+    name = input('姓名:')
+    grade = input('年级：')
+    math = int(input('数学成绩：'))
+    chinese = int(input('语文成绩：'))
+    english = int(input('英语成绩：'))
+    physics = int(input('物理成绩：'))
+    dic = {"name":name,"grade":grade,"Math": math,"Chinese": chinese,"English": english,"Physics": physics}
+    db_handler.add_student(dic)
+
+def del_stu():
+    print('=======删除学生信息=======')
+    name = input('姓名：')
+    flg,msg = db_handler.del_student(name)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+func_dic ={
+    '1':o_all_subject,
+    '2':o_single_subject,
+    '3':A_single_subject,
+    '4':ave_of_subject,
+    '5':add_student,
+    '6':del_stu
+}
+
+def run():
+        print(
+            '''
+            1.查询某学生成绩
+            2.查询某学生单科成绩
+            3.查询所有学生单科成绩
+            4.计算单科平均分
+            5.添加学生信息
+            6.删除学生信息
+            '''
+        )
+        option = input('请选择：')
+        if option in func_dic:
+            func_dic[option]()
+ 
+ 
+# settings.py
+import os
+
+BASE_SA = os.path.dirname(os.path.dirname(__file__))
+BASE_db = os.path.join(BASE_SA,'db')
+
+
+ 
+# db_handler.py
+import os
+import json
+from conf import setting
+from StudentClass import Student
+
+
+
+def load(name):
+    student_file = os.path.join(setting.BASE_db,'%s.json'%name)
+    if os.path.exists(student_file):
+        with open(student_file,'r',encoding='utf-8') as f:
+            info = json.load(f)
+        stu = Student.StudentGrade(info['name'],info['grade'],info['Math'],info['Chinese'],info['English'],info['Physics'])
+        return stu
+    else:
+        return False
+    
+def add_student(dic):
+    name = dic['name']
+    with open(os.path.join(setting.BASE_db,'%s.json'%name),'w',encoding='utf-8') as g:
+        json.dump(dic,g)
+    with open(os.path.join(setting.BASE_db,'name_of_stu.json'),'r',encoding='utf-8') as f:
+        list = json.load(f)
+        list.append(name)
+    with open(os.path.join(setting.BASE_db,'name_of_stu.json'),'w',encoding='utf-8') as w:
+        json.dump(list,w)
+
+def del_student(name):
+    student_file = os.path.join(setting.BASE_db, '%s.json' % name)
+    if os.path.exists(student_file):
+        os.remove(student_file)
+        with open(os.path.join(setting.BASE_db, 'name_of_stu.json'), 'r', encoding='utf-8') as f:
+            list = json.load(f)
+            list.remove(name)
+        with open(os.path.join(setting.BASE_db, 'name_of_stu.json'), 'w', encoding='utf-8') as w:
+            json.dump(list, w)
+        return True,'删除成功'
+    else:
+        return False,'不存在该学生'
+    
+def name_menu():
+    with open(os.path.join(setting.BASE_db,'name_of_stu.json'),'r',encoding='utf-8') as f:
+        list = json.load(f)
+        return list
