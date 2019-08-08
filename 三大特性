@@ -1,0 +1,184 @@
+'''
+1.类的属性和对象的属性有什么区别：类的属性是抽象的，对象属性是具体的
+2.什么是绑定到对象的方法，如何定义如何调用，给谁用？什么特性：在类内部定义的函数，默认就是给对象来用，而且是绑定给对象用的,称为对象的绑定方法
+绑定对象的方法特殊之处：应该由对象来调用，对象来调用，会自动将对象当作第一个参数传入
+3.多态，优点，那些场景使用：
+多态性：可以在不用考虑的对象具体类型的前提下，而直接使用对象下的方法，针对不同的对象都可以调用他们公共的方法
+使代码更加规范
+4.鸭子类型：就是不通过继承的强制手段来实现代码规范，而是自己定义两个无关的类，是他们的函数名都一样且个数都一样
+5.封装不是不想让你用而是不想让你随便用，封装就是把属性隐藏起来，只能在内部调用，封装可以隔离复杂度
+6.因为get__y函数没有被封装，可以被外部调用，本身她又在类的内部，可以调用类内部的封装属性
+'''
+
+# 11
+"""
+如果子类中没有某一属性，会用父类的这一属性，但是Child1.x = 2相当于给Child1一个x属性
+现在child1有了自己的属性，就不会用父类的，而child2还是用父类的
+"""
+
+##### 12
+import os
+import json
+
+class People:
+    file = os.path.dirname(__file__)
+    def __init__(self,name):
+        self.name = name
+
+    def add_course(self):
+        self.course = self.read_file()
+        course = input('请输入添加的课程:')
+        price = input('请输入价格：')
+        self.course['%s'%course] = price
+        self.write_file()
+
+    def del_course(self):
+        self.course = self.read_file()
+        course = input('请输入要删除的课程:')
+        if course not in self.course:
+            print('课程表里没有该课程')
+        else:
+            self.course.pop(course)
+            self.write_file()
+
+    def show(self):
+        for k,c in enumerate(self.course,1):
+            print(k,c,'%s'%self.course[c])
+
+    def read_file(self):
+        db_file = os.path.join(self.file,'%s.json'%self.name)
+        if os.path.exists(db_file):
+            with open(os.path.join(self.file,'%s.json'%self.name), 'r', encoding='utf-8') as f:
+                self.course = json.load(f)
+        else:
+            self.course = {}
+            print('课程为空')
+        return self.course
+
+
+    def write_file(self):
+        with open(os.path.join(self.file,'%s.json'%self.name), 'w', encoding='utf-8',) as f:
+            json.dump(self.course,f,ensure_ascii=False)
+
+
+class Teacher(People):
+    def show(self):
+        print('教师排课信息'.center(50, '='))
+        People.read_file(self)
+        People.show(self)
+
+    def add_course(self):
+        print('教师加课'.center(50, '='))
+        People.add_course(self)
+
+    def del_course(self):
+        print('教师删课'.center(50, '='))
+        People.del_course(self)
+
+class Student(People):
+    def show(self):
+        print('学生已选课程信息'.center(50, '='))
+        People.read_file(self)
+        People.show(self)
+
+    def add_course(self):
+        print('学生选课'.center(50, '='))
+        People.add_course(self)
+
+    def del_course(self):
+        print('学生删课'.center(50, '='))
+        People.del_course(self)
+
+stu = Student('long')
+stu.show()
+stu.add_course()
+stu.show()
+stu.add()
+stu.show()
+stu.del_course()
+stu.show()
+
+
+
+
+##### 13
+
+import abc
+
+class Pet(metaclass=abc.ABCMeta):
+    def __init__(self,name):
+        self.__name = name
+    def eat(self):
+        pass
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def change_name(self,new_name):
+        print('修改'.center(50, '='))
+        self.__name = new_name
+
+    @abc.abstractmethod
+    def eat(self):
+        pass
+
+class Cat(Pet):
+    def __init__(self,name,type):
+        super().__init__(name)
+        self.__type = type
+
+    @property
+    def type(self):
+        return self.__type
+
+    def eat(self):
+        return '吃猫粮'
+
+class Dog(Pet):
+    def __init__(self,name,type):
+        super().__init__(name)
+        self.__type = type
+
+    @property                       # 定义函数，伪装成属性，使原来的type属性可以被调用Dog.type，但一般情况下需要满足一定的条件
+    def type(self):
+        return self.__type
+
+    def eat(self):
+        return '吃狗粮'
+
+class Pig(Pet):
+    def __init__(self,name,type):
+        super().__init__(name)   #  注意这里不能有self
+        self.__type = type
+
+    @property
+    def type(self):
+        return self.__type
+
+    def eat(self):
+        return '吃猪粮'
+
+class Master:
+    def __init__(self,name,pet):
+        self.__name = name
+        self.__pet = pet
+
+    def feed(self):
+        print('''
+        %s主人准备好了宠物粮食
+        宠物%s %s 来进食了
+        %s
+        '''%(self.__name,self.__pet.type,self.__pet.name,self.__pet.eat()))
+        # 组合建立主人和宠物的联系，主人类里可以引用自己的封装属性宠物，再通过宠物类的property方法定义的伪属性来传参
+
+p1 = Cat('豆豆','英短猫')
+p2 = Dog('papi','边牧犬')
+p3 = Pig('香香','胡利亚尼猪')
+mst1 = Master('long',p1)
+mst2 = Master('albert',p2)
+mst3 = Master('jag',p3)
+mst1.feed()
+mst2.feed()
+mst3.feed()
