@@ -1,3 +1,30 @@
+# 定义轿车类，没有三个属性不行
+class CarMeta(type):
+    def __init__(self,class_name,class_bases,class_dic):
+        # 从类的名称空间找要求的属性
+        if not class_dic.get('production_date') and not class_dic.get('engine_number') and not class_dic.get('capacity'):
+            raise TypeError('类缺少必要属性')
+        # 我们重写了init方法，但是不能全部重写，所以还要重用父类的功能
+        super(CarMeta,self).__init__(class_name,class_bases,class_dic)
+
+    def __call__(self, *args, **kwargs):
+        # 创建类的一个空对象
+        obj = object.__new__(self)
+        # 把obj对象和类括号的数据传给类的初始化函数__init__
+        self.__init__(obj,*args,**kwargs)
+        # 返回实例化之后的对象
+        return obj
+
+class Car(object,metaclass=CarMeta):
+    # production_date = '0.0.0'
+    # engine_number = 0
+    # capacity = 0
+    pass
+
+
+
+
+
 '''
 Singleton
 意图：
