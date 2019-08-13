@@ -1,0 +1,105 @@
+'''
+Singleton
+意图：保证一个类仅有一个实例，并提供一个访问它的全局访问点。
+适用性：
+当类只能有一个实例而且客户可以从一个众所周知的访问点访问它时。
+当这个唯一实例应该是通过子类化可扩展的，并且客户应该无需更改代码就能使用一个扩展的实例时。
+'''
+
+# 1.修改类的__new__方法
+class Singleton():
+    def __new__(cls):
+        if not hasattr(cls,'instance'):
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
+obj = Singleton()
+obj2 = Singleton()
+print(obj is obj2)
+print(obj)
+
+
+
+#  2.装饰器方法
+def Singleton(cls):
+    __instance = {}
+    def __Singleton(*args,**kwargs):
+        if cls not in __instance:
+            __instance[cls] = cls(*args,**kwargs)
+        return __instance[cls]
+    return __Singleton
+
+@Singleton
+class Foo():
+    pass
+
+f =Foo()
+f1 = Foo()
+print(f,f is f1)
+
+
+# 3.类方法来实现
+class Singleton:
+    @classmethod
+    def instance(self,*args,**kwargs):
+        if not hasattr(Singleton,'_instance'):
+            Singleton._instance = Singleton(*args,**kwargs)
+        return Singleton._instance
+
+foo1 = Singleton.instance()
+foo2 = Singleton.instance()
+print(foo1 is foo2)
+print(foo1)
+
+# 4.元类实现
+class Singleton(type):
+
+    def __init__(cls, *args, **kwargs):
+        cls.__instance = None
+        super().__init__(*args, **kwargs)
+
+    # __call__ 是对于类实例有效，比如说Spam类，是type类的实例
+    def __call__(cls, *args, **kwargs):
+        print('Singleton __call__ running')
+        if cls.__instance is None:
+            '''
+            元类定义__call__方法，可以抢在类运行 __new__ 和 __init__ 之前执行，
+            也就是创建单例模式的前提，在类实例化前拦截掉。
+            type的__call__实际上是调用了type的__new__和__init__,返回了一个spam类的对象
+            '''
+            cls.__instance = super().__call__(*args, **kwargs)
+            print(cls.__instance)
+            return cls.__instance
+        else:
+            return cls.__instance
+
+class Spam(metaclass=Singleton):
+
+    def __new__(cls):
+        print('Spam __new__ running')
+        return super().__new__(cls)
+
+    def __init__(self):
+        print('Spam __init__ running')
+
+
+if __name__ == '__main__':
+    a = Spam()
+    b = Spam()
+    print(a is b)
+    c = Spam()
+    print(a is c)
+
+
+# 5.使用模块的方法
+"""
+其实，Python 的模块就是天然的单例模式，因为模块在第一次导入时，会生成 .pyc 文件，
+当第二次导入时，就会直接加载 .pyc 文件，而不会再次执行模块代码。因此，我们只需把相关的函数和数据定义在一个模块中，
+就可以获得一个单例对象了。
+"""
+class Singleton(object):
+    def foo(self):
+        pass
+singleton = Singleton()
+# 将上面的代码保存在文件 py 中，要使用时，直接在其他文件中导入此文件中的对象，这个对象即是单例模式的对象
+from a import singleton
