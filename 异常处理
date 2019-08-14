@@ -1,0 +1,27 @@
+class integer:
+    @classmethod
+    def input(self):
+        while True:
+            try:
+                num = input('请输入：')
+                num = int(num)
+                if num < -2147483648 or num > 2147483647:
+                    raise verifySlopOverError(num,'越界')
+            except ValueError:
+                print("invalid literal for int（） with base 10:'%s'" % num)
+            except verifySlopOverError:
+                print('ErrorMsg:%s-越界'%num)
+
+            else:
+                break
+
+
+class verifySlopOverError(BaseException):
+    def __init__(self,number,massage):
+        self.number = number
+        self.massage = massage
+
+    def __str__(self):
+        return 'ErrorMsg:%s-%s'%(self.number,self.massage)
+
+obj = integer.input()
