@@ -1,0 +1,693 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/17 23:37
+# @Author  : zx-long  
+# @File    : start.py
+
+import sys, os
+
+path = os.path.dirname(os.path.dirname(__file__))       # 这条命令用来获取当前文件所在文件夹的路径，这里是E-mall的路径
+sys.path.append(path)                                # 把工程路径加入到环境变量中
+from core import src
+if __name__ == '__main__':
+    src.run()
+
+"""
+学校类有一个课程对象列表，列表里存储着课程对象，课程对象里面存储着学生的信息
+每个学生又保存着自己的课程对象，每个对象有自己的课程分数属性，
+一门课对应一个老师，一个老师对应一个学校，一个老师可以对应多门课,老师的课程列表存储他授课的课程名称而不是对象，且保存一个学校ID
+教师可以通过学校和自己存储的课程列表找到自己教的学生
+分为：用户输入层——接口层（类）——数据处理层
+bin：start启动程序
+conf:settings 包括日志设置和存储路径设置
+db:分四个数据包，各自储存学生，教师，管理员，学校的pickle文件，还有db_handler模块用于数据的提取与存储等
+lib：包含common ,日志生成器
+log:日志文件
+tool:各种类
+"""
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 15:15
+# @Author  : zx-long  
+# @File    : settings.py
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))   # StudentManageSys文件夹路径
+BASE_DB = os.path.join(BASE_DIR, 'db')              # db文件夹路径
+mng_DB = os.path.join(BASE_DB,'mng')
+sch_DB = os.path.join(BASE_DB,'sch')
+stu_DB = os.path.join(BASE_DB,'stu')
+teac_DB = os.path.join(BASE_DB,'teac')
+BASE_LOG =os.path.join(BASE_DIR,'log')              # log文件夹路径
+
+standard_format = '[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d]' \
+                  '[%(levelname)s][%(message)s]'               # 其中name为getLogger指定的名字
+
+simple_format = '[%(levelname)s][%(asctime)s][%(filename)s:%(lineno)d]%(message)s'
+
+id_simple_format = '[%(levelname)s][%(asctime)s] %(message)s'
+
+# 定义日志输出格式 结束
+
+# 如果不存在定义的日志目录就创建一个
+if not os.path.isdir(BASE_LOG):            # isdir判断文件夹是否存在
+    os.mkdir(BASE_LOG)
+
+# log文件的全路径
+logfile_path = os.path.join(BASE_LOG, 'log.log')
+
+# log配置字典
+LOGGING_DIC = {
+    'version': 1,
+
+    'disable_existing_loggers': False,         # 决定已存在的日志器是否有效
+
+    'formatters': {
+        'standard': {
+            'format': standard_format
+        },
+        'simple': {
+            'format': simple_format
+        },
+    },
+
+    'filters': {},
+
+    'handlers': {
+        # 打印到终端的日志
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',  # 打印到屏幕，此为必选项，是打印方式的选择
+            'formatter': 'simple'
+        },
+        # 打印到文件的日志,收集info及以上的日志
+        'default': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件，
+            'formatter': 'standard',
+            'filename': logfile_path,  # 日志文件
+            'maxBytes': 1024 * 1024 * 5,  # 日志大小 5M
+            'backupCount': 5,
+            'encoding': 'utf-8',  # 日志文件的编码，再也不用担心中文log乱码了
+        },
+    },
+
+    'loggers': {
+        # 该字典对象每个元素的key为要定义的日志器名称，value为日志器的配置信息组成的dcit,信息包括level、handlers、filters 等
+        # 将成为logging.getLogger(__name__)拿到的logger配置,
+        '': {
+            'handlers': ['default', 'console'],  # 这里把上面定义的两个handler都加上，即log数据既写入文件又打印到屏幕
+            'level': 'INFO',
+            'propagate': True,  # 向上（更高level的logger）传递
+        },
+    },
+
+}
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 19:56
+# @Author  : zx-long  
+# @File    : src.py
+
+from tool import user, manager
+
+user_obj = None
+user_type = None
+
+# 登陆与注册
+def login():
+    global user_obj,user_type
+    if user_obj:
+        print('您已经登陆了')
+        return
+    while True:
+        print('''
+            =========登陆=========
+            1.学生登陆
+            2.教师登陆
+            3.管理员登陆
+            ------按q退出------
+            ''')
+        option = input('请选择身份登陆:')
+        if option in ['1', '2', '3']:
+            id = input('请输入ID：').strip()
+            password = input('请输入密码：').strip()
+            flg, msg = user.User.login_interface(option, id, password)    # 调用登陆接口函数，输入为用户输入的两个参数
+            if flg:
+                user_obj = flg
+                user_type = option
+                print(msg)
+                break
+            else:
+                print(msg)
+        elif option == 'q':break
+        else:
+            print('输入错误')
+
+
+def register():
+    if user_obj:
+        print('您已经登陆了')
+        return
+    while True:
+        print('''
+        =======注册=======
+        1.学生注册
+        2.管理注册
+        ---按q退出---
+        ''')
+        option = input('请选择:').strip()
+        if option == 'q': break
+        if option in ['1','2']:
+            name = input('请输入姓名：').strip()
+            id = input('请输入账号id:').strip()
+            password = input('请输入密码').strip()
+            conf_password = input('请确认密码').strip()
+            if password == conf_password:
+               flg, msg = user.User.register_interface(option, name, id, password)    # 调用类初始化
+               if flg:
+                   print(msg)
+               else:
+                   print(msg)
+            else:
+                print('两次密码不一致')
+
+def login_out():
+    global user_obj,user_type
+    user_obj = None
+    user_type = None
+    print('Bye')
+
+
+# 管理员操作
+def create_teacher():
+    user_obj.show_school()
+    school_id = input('选择学校，输入学校id：')
+    name = input('输入姓名：')
+    id = input('创建ID:')
+    psd = input('设置密码：')
+    flg,msg = user_obj.create_teacher(school_id, name, id, psd)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+
+def create_school():
+    name = input('输入学校名称：')
+    school_id = input('输入学校id：')
+    flg,msg = user_obj.create_school(name,school_id)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+
+def create_course():
+    user_obj.show_school()
+    school_id = input('选择学校，请输入id:')
+    name = input('输入课程名称:')
+    period = input('请输入课程周期:')
+    price = input('请输入课程价格:')
+    flg, msg = user_obj.create_course(school_id,name,period,price)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+def del_course():
+    user_obj.show_school()
+    school_id = input('选择学校，请输入id:')
+    flg,msg = user_obj.del_course(school_id)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+# 学生操作
+def choose_school():
+    if user_obj.school_id:
+        print('已经选择了学校')
+    else:
+        manager.Manager.show_school()
+        school_id = input('请选择学校,输入学校ID:')
+        flg,msg = user_obj.choose_school(school_id)
+        if flg:
+            print(msg)
+        else:
+            print(msg)
+
+def choose_course():
+    if not user_obj.school_id:
+        print('还未选择学校,先选择学校吧')
+        choose_school()
+    else:
+        user_obj.show_courses_inschool()
+        option = input('请输入课程名称:')
+        flg,msg = user_obj.add_course(option)
+        if flg:
+            print(msg)
+        else:
+            print(msg)
+
+def show_score():
+    user_obj.show_score()
+
+# 教师操作
+def teach_course():
+    user_obj.show_courses_inschool()
+    option = input('请输入课程名称:')
+    flg, msg = user_obj.add_course(option)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+def show_courses():
+    user_obj.show_courses()
+
+def show_students():
+    user_obj.show_students()
+
+def set_score():
+    show_students()
+    course = input('请选择课程:')
+    id = input('请输入学生ID')
+    score = input('设置分数为：')
+    flg,msg = user_obj.set_score(course,id,score)
+    if flg:
+        print(msg)
+    else:
+        print(msg)
+
+func_dic_mng = {
+    '1':create_school,
+    '2':create_teacher,
+    '3':create_course,
+    '4':del_course,
+    '5':login_out,
+}
+
+func_dic_tea = {
+    '1':teach_course,
+    '2':show_courses,
+    '3':show_students,
+    '4':set_score,
+    '5':login_out
+}
+
+func_dic_stu = {
+    '1': choose_school,
+    '2':choose_course,
+    '3':show_score,
+    '4':login_out,
+}
+
+menu_dic_stu = '''
+1.选学校
+2.选课程
+3.查看分数
+4.退出
+'''
+
+menu_dic_teac = '''
+1.选课
+2.查看课程
+3.查看学生
+4.设置分数
+5.退出登陆
+'''
+
+menu_dic_mng = '''
+1.创建学校
+2.创建教师
+3.创建课程
+4.删除课程
+5.退出登录
+'''
+menu_dic = {'1': menu_dic_stu, '2': menu_dic_teac, '3': menu_dic_mng}
+func_dic = {'1': func_dic_stu, '2': func_dic_tea, '3': func_dic_mng}
+def run():
+    while True:
+        print('''
+        1、登录
+        2、注册
+        -----q退出------
+        ''')
+        choice = input('请选择:').strip()
+        if choice == '1':
+            login()
+            while user_obj:
+                print(menu_dic[user_type])
+                func = func_dic[user_type]
+                option = input('选择:')
+                if option.isdigit() and 0 < int(option) <= len(func):
+                    func[option]()
+        elif choice == '2':
+            register()
+        elif choice == 'q':
+            break
+        else:
+            print('输入有误')
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 15:14
+# @Author  : zx-long  
+# @File    : db_handler.py
+
+import os
+from conf import settings
+import pickle
+
+# 保存用户信息
+def save(path,obj):
+    user_path = os.path.join(path, '%s.pickle' % obj.id)
+    with open(user_path, 'wb') as f:
+        pickle.dump(obj, f)
+        f.flush()
+
+# 取出用户信息
+def select(path,id):
+    user_path = os.path.join(path, '%s.pickle' % id)
+    if os.path.exists(user_path):                                  # 判断文件是否存在
+        with open(user_path, 'rb') as f:
+            obj = pickle.load(f)
+            return obj
+    else:
+        return None
+
+# 遍历文件夹,寻找学校id和名称
+def show_sch_info():
+    for i in os.walk(settings.sch_DB):
+        for n in range(len(i[2])):
+            path = os.path.join(i[0],i[2][n])
+            with open(path,'rb') as f:
+                obj = pickle.load(f)
+                print(obj.name,obj.id)
+
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 22:54
+# @Author  : zx-long  
+# @File    : common.py
+
+import logging.config
+from conf import settings
+
+
+def get_logger(name):
+    logging.config.dictConfig(settings.LOGGING_DIC)   # dictConfig是用字典配置日志的格式，另外还有fileConfig，basicConfig
+    logger = logging.getLogger(name)
+    return logger
+    
+
+## tool包里的类
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 17:07
+# @Author  : zx-long  
+# @File    : courses.py
+class Courses:
+    def __init__(self,school_id,name,period,price,score = None,teacher = None):
+        self.name = name
+        self.period = period
+        self.price = price
+        self.score = score
+        self.school_id = school_id
+        self.students = []
+        self.teacher = teacher
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 14:59
+# @Author  : zx-long  
+# @File    : manager.py
+from tool import school, teacher, courses
+from db import db_handler
+from conf import settings
+from lib import common
+
+mng_logger = common.get_logger('mng')
+
+class Manager:
+    def __init__(self,name,id,psd):
+        self.name = name
+        self.id = id
+        self.psd = psd
+
+    def create_school(self,name, school_id):
+        sch = db_handler.select(settings.sch_DB, school_id)
+        if sch:
+            return False, 'id已被其他学校占用'
+        else:
+            sch_obj = school.School(name, school_id)
+            db_handler.save(settings.sch_DB, sch_obj)
+            mng_logger.info('管理员-id:%s 创建了学校，学校id:%s,名称:%s' % (self.id, school_id, name))
+            return True, '学校创建成功'
+
+
+    def create_teacher(self,school_id, name, id, psd, ):
+        sch = db_handler.select(settings.sch_DB, school_id)
+        tch = db_handler.select(settings.teac_DB, id)
+        if sch:
+            if not tch:
+                tch_obj = teacher.Teacher(name, id, psd, school_id)
+                db_handler.save(settings.teac_DB, tch_obj)
+                mng_logger.info('管理员id:%s 创建了老师，老师id:%s,名称:%s' % (self.id, id, name))
+                return True, '创建成功'
+            else:
+                return False, 'id 已被占用'
+        else:
+            return False, '不存在的学校id'
+
+    def create_course(self,school_id, name, period, price):
+        sch = db_handler.select(settings.sch_DB, school_id)
+        cors = courses.Courses(school_id, name, period, price)
+        sch.courses.append(cors)
+        db_handler.save(settings.sch_DB, sch)
+        mng_logger.info('管理员-id:%s 在学校-%s增加了课程-%s' % (self.id, sch.name, name))
+        return True, '成功创建课程'
+
+    @classmethod    # 可以直接用类调用方法而且不用实例化
+    def show_school(self):
+        print('========已建立的学校========')
+        db_handler.show_sch_info()
+
+
+    def del_course(self,school_id):
+        sch = db_handler.select(settings.sch_DB, school_id)
+        if sch:
+            if sch.del_course():
+                db_handler.save(settings.sch_DB, sch)
+                return True,'成功删除'
+            else:
+                return False,'编号错误'
+        else:
+            return False,'学校id错误'
+            
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 19:57
+# @Author  : zx-long  
+# @File    : school.py
+
+
+class School:
+    def __init__(self, name, id):
+        self.name = name
+        self.courses = []
+        self.id = id
+
+    def del_course(self):
+        self.check_courses()
+        while True:
+            num = input('输入要删除的课程编号:').strip()
+            if num.isdigit() and 1 <= int(num) <= len(self.courses):
+                del self.courses[int(num)-1]
+                return True,'删除成功'
+            else:
+                return False,'课程编号不存在'
+
+    def check_courses(self):
+        print(('已开设课程-%s'% self.name).center(50,'='))
+        for k, course in enumerate(self.courses, 1):
+            print(k, course.name, course.period, '￥'+str(course.price))
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 14:59
+# @Author  : zx-long  
+# @File    : student.py
+from db import db_handler
+from conf import settings
+from lib import common
+
+stu_logger = common.get_logger('stu')
+
+class Student:
+    def __init__(self, name, stu_id, psd, school_id=None):
+        self.name = name
+        self.id = stu_id
+        self.psd = psd
+        self.school_id = school_id
+        self.courses = []
+
+    def show_score(self):
+        print('=========成绩=========')
+        for k,item in enumerate(self.courses,1):
+            print(k,item.name,item.score)
+
+    def add_course(self, name):
+        sch = db_handler.select(settings.sch_DB, self.school_id)
+        for item in self.courses:
+            if item.name == name:
+                return False, '这门课程已在学习课程内'
+        for item in sch.courses:
+            if item.name == name:
+                item.students.append(self)
+                self.courses.append(item)
+                db_handler.save(settings.stu_DB, self)
+                db_handler.save(settings.sch_DB, sch)
+                stu_logger.info('学生姓名%s，id:%s,增加了课程%s' % (self.name, self.id, name))
+                return True, '课程已加入清单'
+        else:
+            return False, '课程不存在'
+
+    def choose_school(self,school_id):
+        if db_handler.select(settings.sch_DB, school_id):
+            self.school_id = school_id
+            return True, '成功选择学校'
+        else:
+            return False, '不存在的学校ID'
+
+    # 查看所在学校的开课情况
+    def show_courses_inschool(self):
+       sch = db_handler.select(settings.sch_DB,self.school_id)
+       sch.check_courses()
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 14:59
+# @Author  : zx-long  
+# @File    : teacher.py
+from db import db_handler
+from conf import settings
+from lib import common
+from core import src
+
+teac_logger = common.get_logger('teac')
+
+class Teacher:
+    def __init__(self,name,id,psd,school_id):
+        self.name = name
+        self.id = id
+        self.psd = psd
+        self.school_id = school_id
+        self.courses = []
+
+    def show_courses(self):
+        print('========查看您的授课========')
+        for k,item in enumerate(self.courses,1):
+            print(k,item)
+
+    # 教师选课
+    def add_course(self,option):
+        sch = db_handler.select(settings.sch_DB, self.school_id)
+        for item in self.courses:
+            if option == item:
+                return False, '课程已存在'
+        else:
+            for cour in sch.courses:
+                if option == cour.name:
+                    self.courses.append(option)  # 课程名称放入老师的课程列表
+                    cour.teacher = self            # 将该门课程的教师属性设置为当前教师对象
+                    db_handler.save(settings.sch_DB, sch)
+                    db_handler.save(settings.teac_DB, self)
+                    teac_logger.info('教师：姓名-%s，id-%s,增加了课程%s' % (self.name, self.id, option))
+                    return True, '成功选择课程'
+            else:
+                return False, '没有目标课程'
+
+    # 查看所授课班级相应的学生名单
+    def show_students(self):
+        sch = db_handler.select(settings.sch_DB, self.school_id)  # 取出学校
+        for course in sch.courses:
+            if course.name in self.courses:
+                print('\n\n')
+                print('=========%s=========' % course.name)
+                for k, stu in enumerate(course.students, 1):
+                    print(k, stu.name, 'id:' + stu.id)
+
+
+    def set_score(self, course, id, score):
+        stu = db_handler.select(settings.stu_DB, id)  # 取出学生对象，学生的课程列表里存放着课程对象，将对象的分数属性设置为想要的值
+        if stu:
+            for item in stu.courses:
+                if item.name == course:
+                    item.score = score
+                    db_handler.save(settings.stu_DB, stu)
+                    teac_logger.info(
+                        '教师：姓名-%s，id-%s,修改了id为:%s学生的%s课的分数' % (src.user_obj.name, src.user_obj.id, id, course))
+                    return True, '设置成功'
+            else:
+                return False, '课程不存在'
+        else:
+            return False, '学生ID错误'
+
+    # 查看所在学校的开课情况
+    def show_courses_inschool(self):
+        sch = db_handler.select(settings.sch_DB, self.school_id)
+        sch.check_courses()
+
+
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2019/8/15 20:38
+# @Author  : zx-long  
+# @File    : user.py
+from db import db_handler
+from tool import student, manager
+from conf import settings
+from lib import common
+
+user_logger = common.get_logger('user')
+
+class User:
+    @classmethod
+    def login_interface(self, option, id, password):
+        path_dic = {'1': settings.stu_DB, '2':settings.teac_DB,'3': settings.mng_DB}
+        path = path_dic[option]
+        obj = db_handler.select(path,id)
+        if obj:
+            if obj.psd == password:
+                user_logger.info('id: %s 登陆了' % (id))
+                return obj, '登陆成功'
+            else:
+                return False,'密码错误'
+        else:
+            return False, 'id不存在'
+
+    @classmethod
+    def register_interface(self, option, name, id, password):
+        dic = {'1': student.Student, '2': manager.Manager}
+        path_dic = {'1':settings.stu_DB,'2':settings.mng_DB}
+        path = path_dic[option]
+        user_info = db_handler.select(path,id)        # 先从数据库查找是否有同名用户
+        if user_info:
+            return False, '账号已存在'         # return可以返回多个值
+        else:
+            obj = dic[option](name, id, password)
+            db_handler.save(path,obj)
+            user_logger.info('%s-id:%s 注册了' % (name,id))
+            return True, '注册成功'
